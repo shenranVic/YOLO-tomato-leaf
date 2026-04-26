@@ -1,0 +1,6 @@
+train: E:/wowshenran/yolov11/ultralytics-8.3.6-1/data/train/images
+val: E:/wowshenran/yolov11/ultralytics-8.3.6-1/data/valid/images
+test: E:/wowshenran/yolov11/ultralytics-8.3.6-1/data/test/images
+
+nc: 9
+names: ['Early Blight', 'Healthy', 'Late Blight', 'Leaf Miner', 'Leaf Mold', 'Mosaic Virus', 'Septoria', 'Spider Mites', 'Yellow Leaf Curl Virus']

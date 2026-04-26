@@ -1,0 +1,353 @@
+# Ultralytics YOLO 🚀, AGPL-3.0 license
+# YOLO11 object detection model with P3-P5 outputs. For Usage examples see https://docs.ultralytics.com/tasks/detect
+
+# Parameters
+nc: 9 # number of classes
+scales: # model compound scaling constants, i.e. 'model=yolo11n.yaml' will call yolo11.yaml with scale 'n'
+  # [depth, width, max_channels]
+  n: [0.50, 0.25, 1024] # summary: 319 layers, 2624080 parameters, 2624064 gradients, 6.6 GFLOPs
+  s: [0.50, 0.50, 1024] # summary: 319 layers, 9458752 parameters, 9458736 gradients, 21.7 GFLOPs
+  m: [0.50, 1.00, 512] # summary: 409 layers, 20114688 parameters, 20114672 gradients, 68.5 GFLOPs
+  l: [1.00, 1.00, 512] # summary: 631 layers, 25372160 parameters, 25372144 gradients, 87.6 GFLOPs
+  x: [1.00, 1.50, 512] # summary: 631 layers, 56966176 parameters, 56966160 gradients, 196.0 GFLOPs
+
+# YOLO11n backbone
+#backbone:
+#  # [from, repeats, module, args]
+#  - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2
+#  - [-1, 1, Conv, [128, 3, 2]] # 1-P2/4
+#  - [-1, 2, C3k2, [256, False, 0.25]]
+#  - [-1, 1, Conv, [256, 3, 2]] # 3-P3/8
+#  - [-1, 2, C3k2, [512, False, 0.25]]
+#  - [-1, 1, Conv, [512, 3, 2]] # 5-P4/16
+#  - [-1, 2, C3k2, [512, True]]
+#  - [-1, 1, Conv, [1024, 3, 2]] # 7-P5/32
+#  - [-1, 2, C3k2, [1024, True]]
+#  - [-1, 1, SPPF, [1024, 5]] # 9
+#  - [-1, 2, C2PSA, [1024]] # 10
+#
+## YOLO11n head
+#head:
+#  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#  - [[-1, 6], 1, Concat, [1]] # cat backbone P4
+#  - [-1, 2, C3k2, [512, False]] # 13
+#
+#  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#  - [[-1, 4], 1, Concat, [1]] # cat backbone P3
+#  - [-1, 2, C3k2, [256, False]] # 16 (P3/8-small)
+#
+#  - [-1, 1, Conv, [256, 3, 2]]
+#  - [[-1, 13], 1, Concat, [1]] # cat head P4
+#  - [-1, 2, C3k2, [512, False]] # 19 (P4/16-medium)
+#
+#  - [-1, 1, Conv, [512, 3, 2]]
+#  - [[-1, 10], 1, Concat, [1]] # cat head P5
+#  - [-1, 2, C3k2, [1024, True]] # 22 (P5/32-large)
+#
+#  - [[16, 19, 22], 1, Detect, [nc]] # Detect(P3, P4, P5)
+
+
+#====================只加BiFPN  开始========================
+# backbone 保持原结构（不用注意力）
+#backbone:
+# - [-1, 1, Conv, [64, 3, 2]]
+# - [-1, 1, Conv, [128, 3, 2]]
+# - [-1, 2, C3k2, [256, False, 0.25]]
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [-1, 2, C3k2, [512, False, 0.25]]
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [-1, 2, C3k2, [512, True]]
+# - [-1, 1, Conv, [1024, 3, 2]]
+# - [-1, 2, C3k2, [1024, True]]
+# - [-1, 1, SPPF, [1024, 5]]
+# - [-1, 2, C2PSA, [1024]]
+#
+## neck 用 BiFPN 替换（不用 RepC3）
+#head:
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 6], 1, BiFPN_Add2, [512]]
+# - [-1, 2, C3k2, [512, False]] # ← 原始 C3k2，不换 RepC3
+#
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 4], 1, BiFPN_Add2, [256]]
+# - [-1, 2, C3k2, [256, False]]
+#
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [[-1, 13], 1, BiFPN_Add2, [512]]
+# - [-1, 2, C3k2, [512, False]]
+#
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [[-1, 10], 1, BiFPN_Add2, [1024]]
+# - [-1, 2, C3k2, [1024, True]]
+#
+# - [[16, 19, 22], 1, Detect, [nc]]
+#====================只加BiFPN  结束========================
+
+# ===================只在 backbone  加注意力开始==============
+#backbone:
+# - [-1, 1, Conv, [64, 3, 2]]
+# - [-1, 1, Conv, [128, 3, 2]]
+# - [-1, 2, C3k2, [256, False, 0.25]]
+# - [-1, 1, seC3, [256, 2, 0.25]] # ← SE 注意力
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [-1, 2, C3k2, [512, False, 0.25]]
+# - [-1, 1, cbamC3, [512, 2]] # ← CBAM 注意力
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [-1, 2, C3k2, [512, True]]
+# - [-1, 1, ecaC3, [512, 2]] # ← ECA 注意力
+# - [-1, 1, Conv, [1024, 3, 2]]
+# - [-1, 2, C3k2, [1024, True]]
+# - [-1, 1, CoordAtt, [1024]] # ← 坐标注意力
+# - [-1, 1, SPPF, [1024, 5]]
+# - [-1, 2, C2PSA, [1024]]
+#
+## neck 保持原结构（不用 BiFPN、不用 RepC3）
+#head:
+#  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#  - [[-1, 6], 1, Concat, [1]] # cat backbone P4
+#  - [-1, 2, C3k2, [512, False]] # 13
+#
+#  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+#  - [[-1, 4], 1, Concat, [1]] # cat backbone P3
+#  - [-1, 2, C3k2, [256, False]] # 16 (P3/8-small)
+#
+#  - [-1, 1, Conv, [256, 3, 2]]
+#  - [[-1, 13], 1, Concat, [1]] # cat head P4
+#  - [-1, 2, C3k2, [512, False]] # 19 (P4/16-medium)
+#
+#  - [-1, 1, Conv, [512, 3, 2]]
+#  - [[-1, 10], 1, Concat, [1]] # cat head P5
+#  - [-1, 2, C3k2, [1024, True]] # 22 (P5/32-large)
+#
+#  - [[16, 19, 22], 1, Detect, [nc]] # Detect(P3, P4, P5)
+
+# ===================只在 backbone  加注意力结束==============
+
+
+# ===================只加RepC3      开始===================
+#backbone:
+#  # [from, repeats, module, args]
+#  - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2
+#  - [-1, 1, Conv, [128, 3, 2]] # 1-P2/4
+#  - [-1, 2, C3k2, [256, False, 0.25]]
+#  - [-1, 1, Conv, [256, 3, 2]] # 3-P3/8
+#  - [-1, 2, C3k2, [512, False, 0.25]]
+#  - [-1, 1, Conv, [512, 3, 2]] # 5-P4/16
+#  - [-1, 2, C3k2, [512, True]]
+#  - [-1, 1, Conv, [1024, 3, 2]] # 7-P5/32
+#  - [-1, 2, C3k2, [1024, True]]
+#  - [-1, 1, SPPF, [1024, 5]] # 9
+#  - [-1, 2, C2PSA, [1024]] # 10
+# neck 保持原结构，但 C3k2 → RepC3
+#head:
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 6], 1, Concat, [1]]
+# - [-1, 2, RepC3, [512]] # ← RepC3 替换 C3k2
+#
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 4], 1, Concat, [1]]
+# - [-1, 2, RepC3, [256]]
+#
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [[-1, 13], 1, Concat, [1]]
+# - [-1, 2, RepC3, [512]]
+#
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [[-1, 10], 1, Concat, [1]]
+# - [-1, 2, RepC3, [1024]]
+#
+# - [[16, 19, 22], 1, Detect, [nc]]
+# ===================只加RepC3      结束===================
+
+#===================注意力机制+repC3  开始===================
+# backbone 加注意力
+#backbone:
+# - [-1, 1, Conv, [64, 3, 2]]
+# - [-1, 1, Conv, [128, 3, 2]]
+# - [-1, 2, C3k2, [256, False, 0.25]]
+# - [-1, 1, seC3, [256, 2, 0.25]] # ← SE 注意力
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [-1, 2, C3k2, [512, False, 0.25]]
+# - [-1, 1, cbamC3, [512, 2]] # ← CBAM 注意力
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [-1, 2, C3k2, [512, True]]
+# - [-1, 1, ecaC3, [512, 2]] # ← ECA 注意力
+# - [-1, 1, Conv, [1024, 3, 2]]
+# - [-1, 2, C3k2, [1024, True]]
+# - [-1, 1, CoordAtt, [1024]] # ← 坐标注意力
+# - [-1, 1, SPPF, [1024, 5]]
+# - [-1, 2, C2PSA, [1024]]
+#
+## head 用 RepC3 替换 C3k2（不用 BiFPN）
+#head:
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 9], 1, Concat, [1]] # cat P4 feature
+# - [-1, 2, RepC3, [512]] # ← RepC3
+#
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 6], 1, Concat, [1]] # cat P3 feature
+# - [-1, 2, RepC3, [256]] # ← RepC3
+#
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [[-1, 17], 1, Concat, [1]] # cat head P4
+# - [-1, 2, RepC3, [512]] # ← RepC3
+#
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [[-1, 14], 1, Concat, [1]] # cat P5
+# - [-1, 2, RepC3, [1024]] # ← RepC3
+#
+# - [[20, 23, 26], 1, Detect, [nc]]
+#===================注意力机制+repC3  结束===================
+
+#===================注意力机制+BiFPN  开始===================
+# backbone 加注意力
+#backbone:
+# - [-1, 1, Conv, [64, 3, 2]]
+# - [-1, 1, Conv, [128, 3, 2]]
+# - [-1, 2, C3k2, [256, False, 0.25]]
+# - [-1, 1, seC3, [256, 2, 0.25]] # ← SE 注意力
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [-1, 2, C3k2, [512, False, 0.25]]
+# - [-1, 1, cbamC3, [512, 2]] # ← CBAM 注意力
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [-1, 2, C3k2, [512, True]]
+# - [-1, 1, ecaC3, [512, 2]] # ← ECA 注意力
+# - [-1, 1, Conv, [1024, 3, 2]]
+# - [-1, 2, C3k2, [1024, True]]
+# - [-1, 1, CoordAtt, [1024]] # ← 坐标注意力
+# - [-1, 1, SPPF, [1024, 5]]
+# - [-1, 2, C2PSA, [1024]]
+#
+## head 用 BiFPN 替换 Concat（不用 RepC3）
+#head:
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 9], 1, BiFPN_Add2, [512]] # ← BiFPN
+# - [-1, 2, C3k2, [512, False]]
+#
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 6], 1, BiFPN_Add2, [256]] # ← BiFPN
+# - [-1, 2, C3k2, [256, False]]
+#
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [[-1, 17], 1, BiFPN_Add2, [512]] # ← BiFPN
+# - [-1, 2, C3k2, [512, False]]
+#
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [[-1, 14], 1, BiFPN_Add2, [1024]] # ← BiFPN
+# - [-1, 2, C3k2, [1024, True]]
+#
+# - [[20, 23, 26], 1, Detect, [nc]]
+
+#===================注意力机制+BiFPN  结束===================
+
+#===================repC3+BiFPN  开始===================
+# backbone 保持原结构
+#backbone:
+# - [-1, 1, Conv, [64, 3, 2]]
+# - [-1, 1, Conv, [128, 3, 2]]
+# - [-1, 2, C3k2, [256, False, 0.25]]
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [-1, 2, C3k2, [512, False, 0.25]]
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [-1, 2, C3k2, [512, True]]
+# - [-1, 1, Conv, [1024, 3, 2]]
+# - [-1, 2, C3k2, [1024, True]]
+# - [-1, 1, SPPF, [1024, 5]]
+# - [-1, 2, C2PSA, [1024]]
+#
+## head 用 BiFPN 替换 Concat + RepC3 替换 C3k2
+#head:
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 6], 1, BiFPN_Add2, [512]] # ← BiFPN
+# - [-1, 2, RepC3, [512]] # ← RepC3
+#
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 4], 1, BiFPN_Add2, [256]] # ← BiFPN
+# - [-1, 2, RepC3, [256]] # ← RepC3
+#
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [[-1, 13], 1, BiFPN_Add2, [512]] # ← BiFPN
+# - [-1, 2, RepC3, [512]] # ← RepC3
+#
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [[-1, 10], 1, BiFPN_Add2, [1024]] # ← BiFPN
+# - [-1, 2, RepC3, [1024]] # ← RepC3
+#
+# - [[16, 19, 22], 1, Detect, [nc]]
+
+#===================repC3+BiFPN  结束===================
+
+#===================repC3+BiFPN+注意力机制  开始===================
+# backbone 加注意力
+#backbone:
+# - [-1, 1, Conv, [64, 3, 2]]
+# - [-1, 1, Conv, [128, 3, 2]]
+# - [-1, 2, C3k2, [256, False, 0.25]]
+# - [-1, 1, seC3, [256, 2, 0.25]] # ← SE 注意力
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [-1, 2, C3k2, [512, False, 0.25]]
+# - [-1, 1, cbamC3, [512, 2]] # ← CBAM 注意力
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [-1, 2, C3k2, [512, True]]
+# - [-1, 1, ecaC3, [512, 2]] # ← ECA 注意力
+# - [-1, 1, Conv, [1024, 3, 2]]
+# - [-1, 2, C3k2, [1024, True]]
+# - [-1, 1, CoordAtt, [1024]] # ← 坐标注意力
+# - [-1, 1, SPPF, [1024, 5]]
+# - [-1, 2, C2PSA, [1024]]
+#
+## head 用 BiFPN 替换 Concat + RepC3 替换 C3k2
+#head:
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 9], 1, BiFPN_Add2, [512]] # ← BiFPN
+# - [-1, 2, RepC3, [512]] # ← RepC3
+#
+# - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+# - [[-1, 6], 1, BiFPN_Add2, [256]] # ← BiFPN
+# - [-1, 2, RepC3, [256]] # ← RepC3
+#
+# - [-1, 1, Conv, [256, 3, 2]]
+# - [[-1, 17], 1, BiFPN_Add2, [512]] # ← BiFPN
+# - [-1, 2, RepC3, [512]] # ← RepC3
+#
+# - [-1, 1, Conv, [512, 3, 2]]
+# - [[-1, 14], 1, BiFPN_Add2, [1024]] # ← BiFPN
+# - [-1, 2, RepC3, [1024]] # ← RepC3
+#
+# - [[20, 23, 26], 1, Detect, [nc]]
+
+backbone:
+ - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2
+ - [-1, 1, Conv, [128, 3, 2]] # 1-P2/4
+ - [-1, 2, C3k2, [256, False, 0.125]] # 2 ← e: 0.25→0.125，减半
+ - [-1, 1, ECALayer, [256]] # 3 ← 零参数注意力补精度
+ - [-1, 1, Conv, [256, 3, 2]] # 4-P3/8
+ - [-1, 2, C3k2, [512, False, 0.125]] # 5 ← e: 0.25→0.125
+ - [-1, 1, ECALayer, [512]] # 6 ← 零参数注意力
+ - [-1, 1, Conv, [512, 3, 2]] # 7-P4/16
+ - [-1, 2, C3k2, [512, True, 0.5]] # 8 ← e: 1.0→0.5
+ - [-1, 1, CoordAtt, [512]] # 9 ← 坐标注意力（轻量）
+ - [-1, 1, Conv, [1024, 3, 2]] # 10-P5/32
+ - [-1, 2, C3k2, [1024, True, 0.5]] # 11 ← e: 1.0→0.5
+ - [-1, 1, SPPF, [1024, 5]] # 12
+ - [-1, 2, C2PSA, [1024]] # 13
+
+head:
+ - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+ - [[-1, 8], 1, BiFPN_Add2, [512]] # 15 ← BiFPN替换Concat
+ - [-1, 2, RepC3, [512]] # 16
+
+ - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+ - [[-1, 5], 1, BiFPN_Add2, [256]] # 18 ← BiFPN替换Concat
+ - [-1, 2, RepC3, [256]] # 19 (P3/8-small)
+
+ - [-1, 1, Conv, [256, 3, 2]]
+ - [[-1, 16], 1, BiFPN_Add2, [512]] # 21 ← BiFPN替换Concat
+ - [-1, 2, RepC3, [512]] # 22 (P4/16-medium)
+
+ - [-1, 1, Conv, [512, 3, 2]]
+ - [[-1, 13], 1, BiFPN_Add2, [1024]] # 24 ← BiFPN替换Concat
+ - [-1, 2, RepC3, [1024]] # 25 (P5/32-large)
+
+ - [[19, 22, 25], 1, Detect, [nc]]
+#===================repC3+BiFPN+注意力机制  结束===================
