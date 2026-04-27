@@ -11,4 +11,10 @@
 | Atten+BiFPN without RepC3 | √ | √ | — | 0.90 | 0.83 | 0.927 | 0.86 | 1.98 |
 | **Ours** | √ | √ | √ | 0.89 | 0.86 | 0.932 | 0.87 | 2.33 |
 
-yaml文件如下：
+yaml文件路径：./ultralytics/cfg/models/11/yolo11_new.yaml
+
+修改后的架构图：
+<img width="655" height="571" alt="image" src="https://github.com/user-attachments/assets/87eeef4e-3e35-4fb4-a493-c5e64f379223" />
+
+
+
